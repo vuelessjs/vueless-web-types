@@ -21,7 +21,10 @@ export async function extractConfig(cwd, watch = false, configFileFromCmd, pathA
     cwd,
     watch,
     componentsRoot: configFilePath ? path.dirname(configFilePath) : cwd,
-    components: componentsFromCmd || "src/**/*.vue",
+    components:
+      componentsFromCmd || additionalConfig.default?.isVuelessEnv
+        ? "src/**/*.vue"
+        : "src/components/**/*.vue",
     outFile: outFileFromCmd || packageJson["web-types"] || "./web-types.json",
     packageName: packageJson["name"],
     packageVersion: packageJson["version"],
