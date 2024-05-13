@@ -3,7 +3,7 @@ import { globbySync } from "globby";
 import * as chokidar from "chokidar";
 import { parse } from "vue-docgen-api";
 import * as fs from "fs";
-import mkdirp from "mkdirp";
+import * as mkdirp from "mkdirp";
 import _ from "lodash-es";
 import { merge } from "lodash-es";
 
