@@ -1,11 +1,10 @@
 import path from "path";
-import { globbySync } from "globby";
-import * as chokidar from "chokidar";
-import { parse } from "vue-docgen-api";
 import * as fs from "fs";
-import * as mkdirp from "mkdirp";
+import * as chokidar from "chokidar";
+import { globbySync } from "globby";
+import { parse } from "vue-docgen-api";
+import { mkdirp } from "mkdirp";
 import _ from "lodash-es";
-import { merge } from "lodash-es";
 
 export default async function build(config) {
   config.componentsRoot = path.resolve(config.cwd, config.componentsRoot);
@@ -152,7 +151,7 @@ async function extractInformation(absolutePath, config) {
 
     defaultConfig = getDefaultConfigJson(defaultConfigFile);
     globalConfig = getGlobalConfigJson(globalConfigFile, name);
-    defaultValues = merge(defaultConfig.defaultVariants, globalConfig[name]?.defaultVariants);
+    defaultValues = _.merge(defaultConfig.defaultVariants, globalConfig[name]?.defaultVariants);
   }
 
   function getDefaultConfigJson(fileContents) {
