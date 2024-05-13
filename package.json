@@ -1,7 +1,7 @@
 {
   "name": "@vueless/web-types",
   "version": "0.0.4",
-  "description": "Vueless web-types.json generator for extended IDE support.",
+  "description": "Vueless Web-Types generator for extended IDE support.",
   "homepage": "https://vueless.com",
   "author": "Johnny Grid",
   "license": "MIT",
