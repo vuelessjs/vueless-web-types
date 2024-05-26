@@ -160,6 +160,7 @@ async function extractInformation(absolutePath, config) {
     let objectString = fileContents
       .substring(objectStartIndex)
       .replace("};", "}")
+      .replace(/null/g, '"null"')
       .replace(/undefined/g, '"undefined"')
       .replace(variablePattern, (match, key) => key + ": {}");
 
