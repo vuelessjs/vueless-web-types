@@ -1,6 +1,6 @@
 {
   "name": "@vueless/web-types",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Vueless Web-Types generator for extended IDE support.",
   "homepage": "https://vueless.com",
   "author": "Johnny Grid",
