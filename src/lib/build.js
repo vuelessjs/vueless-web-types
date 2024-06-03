@@ -139,70 +139,18 @@ async function extractInformation(absolutePath, config) {
   const name = doc.name || doc.displayName;
   let description = doc.description?.trim() ?? "";
 
-  // Get default component config
-  const configPath = path.join(path.dirname(absolutePath), "configs/default.config.js");
-  let globalConfig = null;
-  let defaultConfig = null;
-  let defaultValues = null;
+  // Get default component and global config paths
+  const defaultConfigPath = path.join(path.dirname(absolutePath), "configs/default.config.js");
+  const globalConfigPath = path.join(config.cwd, "vueless.config.js");
 
-  if (fs.existsSync(configPath)) {
-    const defaultConfigFile = fs.readFileSync(configPath).toString();
-    const globalConfigFile = fs.readFileSync(config.cwd + "/vueless.config.js").toString();
+  // Import files as a modules
+  const defaultConfigModule = fs.existsSync(globalConfigPath) && (await import(globalConfigPath));
+  const globalConfigModule = fs.existsSync(defaultConfigPath) && (await import(defaultConfigPath));
 
-    defaultConfig = getDefaultConfigJson(defaultConfigFile);
-    globalConfig = getGlobalConfigJson(globalConfigFile, name);
-    defaultValues = _.merge(defaultConfig.defaultVariants, globalConfig[name]?.defaultVariants);
-  }
-
-  function getDefaultConfigJson(fileContents) {
-    const objectStartIndex = fileContents.indexOf("{");
-    const variablePattern = /([^:]+):\s*(?!true|false|undefined)([a-zA-Z_]\w*)/g;
-    let objectString = fileContents
-      .substring(objectStartIndex)
-      .replace("};", "}")
-      .replace(/null/g, '"null"')
-      .replace(/undefined/g, '"undefined"')
-      .replace(variablePattern, (match, key) => key + ": {}");
-
-    return eval("(" + objectString + ")"); // Converting into JS object
-  }
-
-  function getGlobalConfigJson(fileContents, componentName) {
-    const startIndex = fileContents.indexOf(`${componentName}:`);
-
-    // find index of the last closing bracket
-    let endIndex = -1;
-    let braceCount = 0;
-
-    for (let i = startIndex; i < fileContents.length; i++) {
-      if (fileContents[i] === "{") {
-        braceCount++;
-      } else if (fileContents[i] === "}") {
-        braceCount--;
-
-        if (braceCount === 0) {
-          endIndex = i;
-          break;
-        }
-      }
-    }
-
-    // Get component config raw string
-    const rawString = fileContents.slice(startIndex, endIndex);
-
-    // If the stings are present in config but commented - remove them
-    const stringWithoutComments = rawString.replace(/\/\/.*$/gm, "");
-
-    // Check if final JSON string is valid: TODO: find better solution
-    if (!stringWithoutComments.includes("}")) return {};
-
-    const jsonString = `{${stringWithoutComments}\n}}`
-      .replace(/[`']/g, '"')
-      .replace(/(\w+)\s*: /g, '"$1":')
-      .replace(/,\s*}/g, "}");
-
-    return JSON.parse(jsonString);
-  }
+  const defaultVariants = _.merge(
+    defaultConfigModule?.default?.defaultVariants || {},
+    globalConfigModule?.default?.defaultVariants || {},
+  );
 
   doc.docsBlocks?.forEach((block) => {
     if (description.length > 0) {
@@ -232,8 +180,8 @@ async function extractInformation(absolutePath, config) {
             type: prop.values ? `'${prop.values.join("' | '")}'` : prop.type?.name ?? "any",
           },
           default:
-            defaultValues && prop.name in defaultValues
-              ? defaultValues[prop.name].toString()
+            defaultVariants && prop.name in defaultVariants
+              ? defaultVariants[prop.name].toString()
               : prop.defaultValue?.value.toString(),
         })),
         events: doc.events?.map((event) => ({

@@ -17,14 +17,15 @@ export async function extractConfig(cwd, watch = false, configFileFromCmd, pathA
     additionalConfig = await import(configFilePath);
   }
 
+  const components = additionalConfig.default?.isVuelessEnv
+    ? ["src/**/*.vue", componentsFromCmd]
+    : ["node_modules/vueless/**/*.vue", "src/components/**/*.vue", componentsFromCmd];
+
   return {
     cwd,
     watch,
     componentsRoot: configFilePath ? path.dirname(configFilePath) : cwd,
-    components:
-      componentsFromCmd || additionalConfig.default?.isVuelessEnv
-        ? "src/**/*.vue"
-        : "src/components/**/*.vue",
+    components,
     outFile: outFileFromCmd || packageJson["web-types"] || "./web-types.json",
     packageName: packageJson["name"],
     packageVersion: packageJson["version"],
