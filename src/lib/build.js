@@ -181,8 +181,8 @@ async function extractInformation(absolutePath, config) {
           },
           default:
             defaultVariants && prop.name in defaultVariants
-              ? defaultVariants[prop.name].toString()
-              : prop.defaultValue?.value.toString(),
+              ? defaultVariants[prop.name]?.toString()
+              : prop.defaultValue?.value?.toString(),
         })),
         events: doc.events?.map((event) => ({
           name: event.name,
