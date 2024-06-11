@@ -26,7 +26,7 @@ export async function extractConfig(cwd, watch = false, configFileFromCmd, pathA
     watch,
     componentsRoot: configFilePath ? path.dirname(configFilePath) : cwd,
     components,
-    outFile: outFileFromCmd || packageJson["web-types"] || "./web-types.json",
+    outFile: outFileFromCmd || "./web-types.json",
     packageName: packageJson["name"],
     packageVersion: packageJson["version"],
     typesSyntax: "typescript",
