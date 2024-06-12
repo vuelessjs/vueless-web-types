@@ -144,12 +144,13 @@ async function extractInformation(absolutePath, config) {
   const globalConfigPath = path.join(config.cwd, "vueless.config.js");
 
   // Import files as a modules
-  const defaultConfigModule = fs.existsSync(globalConfigPath) && (await import(globalConfigPath));
-  const globalConfigModule = fs.existsSync(defaultConfigPath) && (await import(defaultConfigPath));
+  const defaultConfigModule = fs.existsSync(defaultConfigPath) && (await import(defaultConfigPath));
+  const globalConfigModule = fs.existsSync(globalConfigPath) && (await import(globalConfigPath));
+  const globalConfigComponents = globalConfigModule?.default?.component || {};
 
   const defaultVariants = _.merge(
     defaultConfigModule?.default?.defaultVariants || {},
-    globalConfigModule?.default?.defaultVariants || {},
+    globalConfigComponents[name]?.defaultVariants || {},
   );
 
   doc.docsBlocks?.forEach((block) => {
@@ -165,6 +166,10 @@ async function extractInformation(absolutePath, config) {
   });
 
   const componentPath = ensureRelative(path.relative(config.cwd, absolutePath));
+  // Prevent "Chose declaration" duplication issue in Intellij
+  const source = !componentPath.contains("vueless")
+    ? { module: componentPath, symbol: doc.exportName }
+    : null;
 
   return {
     tags: [
@@ -192,10 +197,7 @@ async function extractInformation(absolutePath, config) {
           name: slot.name,
           description: slot.description,
         })),
-        source: {
-          module: config.isVuelessEnv ? componentPath.replace("./src", "vueless") : componentPath,
-          symbol: doc.exportName,
-        },
+        source,
       },
     ],
   };
