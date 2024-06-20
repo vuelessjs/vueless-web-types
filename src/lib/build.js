@@ -168,8 +168,8 @@ async function extractInformation(absolutePath, config) {
   const componentPath = ensureRelative(path.relative(config.cwd, absolutePath));
   // Prevent "Chose declaration" duplication issue in Intellij
   const source = !componentPath.includes("vueless")
-    ? { module: componentPath, symbol: doc.exportName }
-    : null;
+    ? { source: { module: componentPath, symbol: doc.exportName } }
+    : {};
 
   return {
     tags: [
@@ -197,7 +197,7 @@ async function extractInformation(absolutePath, config) {
           name: slot.name,
           description: slot.description,
         })),
-        source,
+        ...source,
       },
     ],
   };
