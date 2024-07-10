@@ -192,10 +192,21 @@ async function extractInformation(absolutePath, config) {
         events: doc.events?.map((event) => ({
           name: event.name,
           description: event.description,
+          properties: event.properties?.map((property) => ({
+            type: property.type?.names,
+            name: property.name,
+            description: property.description,
+          })),
         })),
         slots: doc.slots?.map((slot) => ({
           name: slot.name,
+          scoped: slot.scoped,
           description: slot.description,
+          bindings: slot.bindings?.map((binding) => ({
+            type: binding.type?.name,
+            name: binding.name,
+            description: binding.description,
+          })),
         })),
         ...source,
       },
