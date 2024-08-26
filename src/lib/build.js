@@ -148,9 +148,9 @@ async function extractInformation(absolutePath, config) {
   const globalConfigModule = fs.existsSync(globalConfigPath) && (await import(globalConfigPath));
   const globalConfigComponents = globalConfigModule?.default?.component || {};
 
-  const defaultVariants = _.merge(
-    defaultConfigModule?.default?.defaultVariants || {},
-    globalConfigComponents[name]?.defaultVariants || {},
+  const defaults = _.merge(
+    defaultConfigModule?.default?.defaults || {},
+    globalConfigComponents[name]?.defaults || {},
   );
 
   doc.docsBlocks?.forEach((block) => {
@@ -185,8 +185,8 @@ async function extractInformation(absolutePath, config) {
             type: prop.values ? `'${prop.values.join("' | '")}'` : prop.type?.name ?? "any",
           },
           default:
-            defaultVariants && prop.name in defaultVariants
-              ? defaultVariants[prop.name]?.toString()
+            defaults && prop.name in defaults
+              ? defaults[prop.name]?.toString()
               : prop.defaultValue?.value?.toString(),
         })),
         events: doc.events?.map((event) => ({
