@@ -140,7 +140,7 @@ async function extractInformation(absolutePath, config) {
   let description = doc.description?.trim() ?? "";
 
   // Get default component and global config paths
-  const defaultConfigPath = path.join(path.dirname(absolutePath), "configs/default.config.js");
+  const defaultConfigPath = path.join(path.dirname(absolutePath), "config.js");
   const globalConfigPath = path.join(config.cwd, "vueless.config.js");
 
   // Import files as a modules
