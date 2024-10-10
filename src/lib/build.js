@@ -208,6 +208,15 @@ async function extractInformation(absolutePath, config) {
             description: binding.description,
           })),
         })),
+        exposes: doc.expose?.map((expose) => ({
+          name: expose.name,
+          description: expose.description,
+          properties: expose.tags?.map((property) => ({
+            type: property.type?.name,
+            name: property.name,
+            description: property.description,
+          })),
+        })),
         ...source,
       },
     ],
