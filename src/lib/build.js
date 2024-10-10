@@ -140,12 +140,29 @@ async function extractInformation(absolutePath, config) {
   let description = doc.description?.trim() ?? "";
 
   // Get default component and global config paths
-  const defaultConfigPath = path.join(path.dirname(absolutePath), "config.js");
-  const globalConfigPath = path.join(config.cwd, "vueless.config.js");
+  const defaultConfigPath = path.join(path.dirname(absolutePath), "config");
+  const globalConfigPath = path.join(config.cwd, "vueless.config");
 
   // Import files as a modules
-  const defaultConfigModule = fs.existsSync(defaultConfigPath) && (await import(defaultConfigPath));
-  const globalConfigModule = fs.existsSync(globalConfigPath) && (await import(globalConfigPath));
+  let defaultConfigModule = null;
+  let globalConfigModule = null;
+
+  if (fs.existsSync(`${defaultConfigPath}.js`)) {
+    defaultConfigModule = await import(`${defaultConfigPath}.js`);
+  }
+
+  if (fs.existsSync(`${defaultConfigPath}.ts`)) {
+    defaultConfigModule = await import(`${defaultConfigPath}.ts`);
+  }
+
+  if (fs.existsSync(`${globalConfigPath}.js`)) {
+    globalConfigModule = await import(`${globalConfigPath}.js`);
+  }
+
+  if (fs.existsSync(`${globalConfigPath}.ts`)) {
+    globalConfigModule = await import(`${globalConfigPath}.ts`);
+  }
+
   const globalConfigComponents = globalConfigModule?.default?.component || {};
 
   const defaults = _.merge(
