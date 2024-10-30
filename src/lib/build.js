@@ -5,6 +5,7 @@ import { globbySync } from "globby";
 import { parse } from "vue-docgen-api";
 import { mkdirp } from "mkdirp";
 import _ from "lodash-es";
+import { readFile } from "node:fs/promises";
 
 export default async function build(config) {
   config.componentsRoot = path.resolve(config.cwd, config.componentsRoot);
@@ -134,39 +135,48 @@ function ensureRelative(path) {
   return (path.startsWith("./") || path.startsWith("../") ? path : "./" + path).replace(/\\/g, "/");
 }
 
+export function getDefaultConfigJson(fileContents) {
+  const objectStartIndex = fileContents.indexOf("{");
+  const objectString = fileContents.substring(objectStartIndex).replace("};", "}");
+
+  // indirect eval
+  return (0, eval)("(" + objectString + ")"); // Converting into JS object
+}
+
+function getDefaultConfigFileName(folderPath) {
+  const folder = fs.readdirSync(path.dirname(folderPath));
+
+  return folder.find((file) => file === "config.js" || file === "config.ts") || "";
+}
+
+function getGlobalConfigFileName() {
+  const folder = fs.readdirSync(process.cwd());
+
+  return folder.find((file) => file === "vueless.config.js" || file === "vueless.config.ts") || "";
+}
+
 async function extractInformation(absolutePath, config) {
   const doc = await parse(absolutePath, config.apiOptions);
   const name = doc.name || doc.displayName;
   let description = doc.description?.trim() ?? "";
 
+  const defaultConfigFileName = getDefaultConfigFileName(absolutePath);
+  const globalConfigFileName = getGlobalConfigFileName();
+
   // Get default component and global config paths
-  const defaultConfigPath = path.join(path.dirname(absolutePath), "config");
-  const globalConfigPath = path.join(config.cwd, "vueless.config");
+  const defaultConfigPath = path.join(path.dirname(absolutePath), defaultConfigFileName);
+  const globalConfigPath = path.join(config.cwd, globalConfigFileName);
 
-  // Import files as a modules
-  let defaultConfigModule = null;
-  let globalConfigModule = null;
+  const defaultConfigContent = await readFile(defaultConfigPath, { encoding: "utf-8" });
+  const globalConfigContent = await readFile(globalConfigPath, { encoding: "utf-8" });
 
-  if (fs.existsSync(`${defaultConfigPath}.js`)) {
-    defaultConfigModule = await import(`${defaultConfigPath}.js`);
-  }
+  const defaultConfig = getDefaultConfigJson(defaultConfigContent);
+  const globalConfig = getDefaultConfigJson(globalConfigContent);
 
-  if (fs.existsSync(`${defaultConfigPath}.ts`)) {
-    defaultConfigModule = await import(`${defaultConfigPath}.ts`);
-  }
-
-  if (fs.existsSync(`${globalConfigPath}.js`)) {
-    globalConfigModule = await import(`${globalConfigPath}.js`);
-  }
-
-  if (fs.existsSync(`${globalConfigPath}.ts`)) {
-    globalConfigModule = await import(`${globalConfigPath}.ts`);
-  }
-
-  const globalConfigComponents = globalConfigModule?.default?.component || {};
+  const globalConfigComponents = globalConfig?.component || {};
 
   const defaults = _.merge(
-    defaultConfigModule?.default?.defaults || {},
+    defaultConfig?.defaults || {},
     globalConfigComponents[name]?.defaults || {},
   );
 
@@ -188,6 +198,24 @@ async function extractInformation(absolutePath, config) {
     ? { source: { module: componentPath, symbol: doc.exportName } }
     : {};
 
+  function getEnum(prop) {
+    let values = null;
+
+    if (prop.type?.elements) {
+      values = prop.type.elements.map((item) => item.name.replaceAll('"', ""));
+    }
+
+    if (prop.values) {
+      values = prop.values;
+    }
+
+    return values ? { enum: values } : {};
+  }
+
+  function getType(prop) {
+    return prop.type?.name ?? "any";
+  }
+
   return {
     tags: [
       {
@@ -197,9 +225,10 @@ async function extractInformation(absolutePath, config) {
           name: prop.name,
           required: prop.required,
           description: prop.tags?.ignore ? "@ignore: " + prop.description : prop.description,
+          ...getEnum(prop),
           value: {
             kind: "expression",
-            type: prop.values ? `'${prop.values.join("' | '")}'` : prop.type?.name ?? "any",
+            type: getType(prop),
           },
           default:
             defaults && prop.name in defaults
