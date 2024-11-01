@@ -4,8 +4,9 @@ import * as chokidar from "chokidar";
 import { globbySync } from "globby";
 import { parse } from "vue-docgen-api";
 import { mkdirp } from "mkdirp";
-import _ from "lodash-es";
 import { readFile } from "node:fs/promises";
+import _ from "lodash-es";
+import { vuelessConfig } from "./vuelessConfig.js";
 
 export default async function build(config) {
   config.componentsRoot = path.resolve(config.cwd, config.componentsRoot);
@@ -149,31 +150,16 @@ function getDefaultConfigFileName(folderPath) {
   return folder.find((file) => file === "config.js" || file === "config.ts") || "";
 }
 
-function getGlobalConfigFileName() {
-  const folder = fs.readdirSync(process.cwd());
-
-  return folder.find((file) => file === "vueless.config.js" || file === "vueless.config.ts") || "";
-}
-
 async function extractInformation(absolutePath, config) {
   const doc = await parse(absolutePath, config.apiOptions);
   const name = doc.name || doc.displayName;
   let description = doc.description?.trim() ?? "";
 
   const defaultConfigFileName = getDefaultConfigFileName(absolutePath);
-  const globalConfigFileName = getGlobalConfigFileName();
-
-  // Get default component and global config paths
   const defaultConfigPath = path.join(path.dirname(absolutePath), defaultConfigFileName);
-  const globalConfigPath = path.join(config.cwd, globalConfigFileName);
-
   const defaultConfigContent = await readFile(defaultConfigPath, { encoding: "utf-8" });
-  const globalConfigContent = await readFile(globalConfigPath, { encoding: "utf-8" });
-
   const defaultConfig = getDefaultConfigJson(defaultConfigContent);
-  const globalConfig = getDefaultConfigJson(globalConfigContent);
-
-  const globalConfigComponents = globalConfig?.component || {};
+  const globalConfigComponents = vuelessConfig?.component || {};
 
   const defaults = _.merge(
     defaultConfig?.defaults || {},
