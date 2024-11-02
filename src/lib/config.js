@@ -26,7 +26,7 @@ export async function extractConfig(cwd, watch = false, configFileFromCmd, pathA
     watch,
     componentsRoot: configFilePath ? path.dirname(configFilePath) : cwd,
     components,
-    outFile: outFileFromCmd || "./web-types.json",
+    outFile: outFileFromCmd || "./node_modules/.cache/vueless/web-types.json",
     packageName: packageJson["name"],
     packageVersion: packageJson["version"],
     typesSyntax: "typescript",

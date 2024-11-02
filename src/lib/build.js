@@ -1,10 +1,10 @@
-import path from "path";
-import * as fs from "fs";
-import * as chokidar from "chokidar";
+import fs from "node:fs";
+import path from "node:path";
+import { readFile } from "node:fs/promises";
+import { mkdirp } from "mkdirp";
+import chokidar from "chokidar";
 import { globbySync } from "globby";
 import { parse } from "vue-docgen-api";
-import { mkdirp } from "mkdirp";
-import { readFile } from "node:fs/promises";
 import _ from "lodash-es";
 import { vuelessConfig } from "./vuelessConfig.js";
 
@@ -12,11 +12,7 @@ export default async function build(config) {
   config.componentsRoot = path.resolve(config.cwd, config.componentsRoot);
   config.outFile = path.resolve(config.cwd, config.outFile);
 
-  // then create the watcher if necessary
   const { watcher, componentFiles } = getSources(config.components, config.componentsRoot);
-
-  // eslint-disable-next-line no-console
-  console.log("Building web-types to " + config.outFile);
 
   const cache = {};
   const buildWebTypesBound = rebuild.bind(null, config, componentFiles, cache, watcher);
@@ -38,6 +34,7 @@ export default async function build(config) {
       .on("unlink", async (filePath) => {
         // eslint-disable-next-line no-console
         console.log("Rebuilding on file removal " + filePath);
+
         delete cache[filePath];
         await writeDownWebTypesFile(config, Object.values(cache), config.outFile);
       });
@@ -48,7 +45,6 @@ export default async function build(config) {
 
 function getSources(components, cwd) {
   const watcher = chokidar.watch(components, { cwd });
-
   const allComponentFiles = globbySync(components, { cwd });
 
   return { watcher, componentFiles: allComponentFiles };
@@ -69,7 +65,7 @@ async function rebuild(config, files, cachedContent, watcher, changedFilePath) {
     console.log("Rebuilding on update file " + changedFilePath);
 
     try {
-      // if in chokidar mode (watch), the path of the file that was just changed
+      // If in chokidar mode (watch), the path of the file that was just changed
       // is passed as an argument. We only affect the changed file and avoid re-parsing the rest
       await cacheWebTypesContent(changedFilePath);
     } catch (e) {
@@ -86,7 +82,7 @@ async function rebuild(config, files, cachedContent, watcher, changedFilePath) {
     }
   }
 
-  // and finally save all concatenated values to the markdown file
+  // and finally, save all concatenated values to the Markdown file
   await writeDownWebTypesFile(config, Object.values(cachedContent), config.outFile);
 }
 
@@ -95,6 +91,7 @@ async function writeDownWebTypesFile(config, definitions, destFilePath) {
 
   await mkdirp(destFolder);
   let writeStream = fs.createWriteStream(destFilePath);
+
   const contents = {
     framework: "vue",
     name: config.packageName,
@@ -121,13 +118,11 @@ async function writeDownWebTypesFile(config, definitions, destFilePath) {
 
   const html = contents.contributions.html;
 
-  if (html.tags?.length == 0) html.tags = undefined;
-  if (html.attributes?.length == 0) html.attributes = undefined;
-  if (html["vue-filters"]?.length == 0) html["vue-filters"] = undefined;
+  if (!html.tags?.length) html.tags = undefined;
+  if (!html.attributes?.length) html.attributes = undefined;
+  if (!html["vue-filters"]?.length) html["vue-filters"] = undefined;
 
   writeStream.write(JSON.stringify(contents, null, 2));
-
-  // close the stream
   writeStream.close();
 }
 
@@ -150,15 +145,39 @@ function getDefaultConfigFileName(folderPath) {
   return folder.find((file) => file === "config.js" || file === "config.ts") || "";
 }
 
+function getEnum(prop) {
+  let values = null;
+
+  if (prop.type?.elements) {
+    values = prop.type.elements.map((item) => item.name.replaceAll('"', ""));
+  }
+
+  if (prop.values) {
+    values = prop.values;
+  }
+
+  return values ? { enum: values } : {};
+}
+
+function getType(prop) {
+  return prop.type?.name ?? "any";
+}
+
 async function extractInformation(absolutePath, config) {
   const doc = await parse(absolutePath, config.apiOptions);
   const name = doc.name || doc.displayName;
   let description = doc.description?.trim() ?? "";
 
   const defaultConfigFileName = getDefaultConfigFileName(absolutePath);
-  const defaultConfigPath = path.join(path.dirname(absolutePath), defaultConfigFileName);
-  const defaultConfigContent = await readFile(defaultConfigPath, { encoding: "utf-8" });
-  const defaultConfig = getDefaultConfigJson(defaultConfigContent);
+  let defaultConfig = {};
+
+  if (defaultConfigFileName) {
+    const defaultConfigPath = path.join(path.dirname(absolutePath), defaultConfigFileName);
+    const defaultConfigContent = await readFile(defaultConfigPath, { encoding: "utf-8" });
+
+    defaultConfig = getDefaultConfigJson(defaultConfigContent);
+  }
+
   const globalConfigComponents = vuelessConfig?.component || {};
 
   const defaults = _.merge(
@@ -183,24 +202,6 @@ async function extractInformation(absolutePath, config) {
   const source = !componentPath.includes("vueless")
     ? { source: { module: componentPath, symbol: doc.exportName } }
     : {};
-
-  function getEnum(prop) {
-    let values = null;
-
-    if (prop.type?.elements) {
-      values = prop.type.elements.map((item) => item.name.replaceAll('"', ""));
-    }
-
-    if (prop.values) {
-      values = prop.values;
-    }
-
-    return values ? { enum: values } : {};
-  }
-
-  function getType(prop) {
-    return prop.type?.name ?? "any";
-  }
 
   return {
     tags: [
