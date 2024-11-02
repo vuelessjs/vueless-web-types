@@ -1,36 +1,68 @@
-import path from "path";
 import fs from "fs";
+import path from "path";
 import { readFile } from "fs/promises";
+import esbuild from "esbuild";
+
+const CACHE_PATH = "./node_modules/.cache/vueless/";
+const WEB_TYPES_CONFIG_FILE_NAME = "web-types.config";
 
 export async function extractConfig(cwd, watch = false, configFileFromCmd, pathArray = []) {
-  const configFilePath = configFileFromCmd
-    ? path.resolve(cwd, configFileFromCmd)
-    : path.join(cwd, "web-types.config.js");
   const [componentsFromCmd, outFileFromCmd] = pathArray;
 
   const fileContent = await readFile(path.join(cwd, "package.json"), "utf-8");
   const packageJson = JSON.parse(fileContent);
 
-  let additionalConfig = {};
+  const config = await getConfig(configFileFromCmd);
 
-  if (fs.existsSync(configFilePath)) {
-    additionalConfig = await import(configFilePath);
-  }
-
-  const components = additionalConfig.default?.isVuelessEnv
+  const components = config?.isVuelessEnv
     ? [componentsFromCmd || "src/**/*.vue"]
     : ["node_modules/vueless/**/*.vue", componentsFromCmd || "src/components/**/*.vue"];
 
   return {
     cwd,
     watch,
-    componentsRoot: configFilePath ? path.dirname(configFilePath) : cwd,
     components,
-    outFile: outFileFromCmd || "./node_modules/.cache/vueless/web-types.json",
+    componentsRoot: cwd,
+    outFile: outFileFromCmd || `${CACHE_PATH}/web-types.json`,
     packageName: packageJson["name"],
     packageVersion: packageJson["version"],
-    typesSyntax: "typescript",
     descriptionMarkup: "markdown",
-    ...additionalConfig.default,
+    typesSyntax: "typescript",
+    ...config,
   };
+}
+
+async function getConfig(configFromCmd) {
+  const configPathFromCmd = configFromCmd && path.resolve(process.cwd(), configFromCmd);
+  const configPathJs = path.resolve(process.cwd(), `${WEB_TYPES_CONFIG_FILE_NAME}.js`);
+  const configPathTs = path.resolve(process.cwd(), `${WEB_TYPES_CONFIG_FILE_NAME}.ts`);
+  const configOutPath = path.join(process.cwd(), `${CACHE_PATH}/${WEB_TYPES_CONFIG_FILE_NAME}.mjs`);
+
+  let config = {};
+
+  if (!fs.existsSync(configPathJs) && !fs.existsSync(configPathTs)) {
+    return config;
+  }
+
+  fs.existsSync(configPathJs) && (await buildConfig(configPathJs, configOutPath));
+  fs.existsSync(configPathTs) && (await buildConfig(configPathTs, configOutPath));
+  fs.existsSync(configPathFromCmd) && (await buildConfig(configPathFromCmd, configPathFromCmd));
+
+  if (fs.existsSync(configOutPath)) {
+    config = (await import(configOutPath)).default;
+  }
+
+  return config;
+}
+
+async function buildConfig(entryPath, configOutFile) {
+  await esbuild.build({
+    entryPoints: [entryPath],
+    outfile: configOutFile,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "ESNext",
+    loader: { ".ts": "ts" },
+  });
 }
